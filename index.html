@@ -53,6 +53,15 @@
   .loi { color: #e03131; font-size: 13px; margin-top: 5px; display: none; }
   .loi.hien { display: block; }
   .khongthay { padding: 10px 2px; color: var(--chu-mo); font-size: 13px; }
+  /* Buu cuc cua cum khac: chan han, khong phai loi nho nhac nho */
+  .chan {
+    display: none; margin-top: 8px; padding: 12px 13px;
+    background: rgba(224, 49, 49, 0.14);
+    border: 2px solid #e03131; border-left-width: 6px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; line-height: 1.45; color: #e03131;
+  }
+  .chan.hien { display: block; }
+
   #nutGui {
     position: fixed; left: 14px; right: 14px; bottom: 14px; padding: 14px;
     font-size: 16px; font-weight: 600; color: #fff; background: var(--nhan);
@@ -91,13 +100,12 @@
 
 <label for="vung">Vùng <span class="sao">*</span></label>
 <select id="vung"><option value="">-- Chọn vùng --</option>
-<option value="DBB">DBB</option>
 <option value="HNO">HNO</option>
-<option value="TBB">TBB</option>
+<option value="DBB">DBB</option>
+<option value="BTB">BTB</option>
+<option value="DSH">DSH</option>
 <option value="TNT">TNT</option>
-<option value="XBG">XBG</option>
-<option value="KHL">KHL</option>
-<option value="KTC">KTC</option></select>
+<option value="XBG">XBG</option></select>
 <div class="loi" id="loiVung">Chưa chọn vùng</div>
 
 <label for="timBuuCuc">Bưu cục cần tăng cường <span class="sao">*</span></label>
@@ -106,6 +114,7 @@
 <ul class="goiy" id="goiY"></ul>
 <div class="dachon" id="daChon"></div>
 <div class="loi" id="loiBuuCuc">Chưa chọn bưu cục</div>
+<div class="chan" id="chanCumKhac">⛔ Bưu cục thuộc cụm Hưng Yên, vui lòng điền yêu cầu tăng cường đúng khu vực</div>
 
 <div class="hang">
   <div>
@@ -123,9 +132,9 @@
 <input id="hoTen" type="text" placeholder="Nguyễn Văn Minh">
 
 <label for="loaiXe">Loại xe <span class="sao">*</span></label>
-<select id="loaiXe"><option value="1,9 Tấn">1,9 Tấn</option>
-<option value="5 Tấn">5 Tấn</option>
-<option value="8 Tấn">8 Tấn</option></select>
+<select id="loaiXe"><option value="1T9">1T9</option>
+<option value="2T5">2T5</option>
+<option value="3T5">3T5</option></select>
 
 <div class="hang">
   <div>
@@ -186,6 +195,25 @@ if (tg) { tg.ready(); tg.expand(); }
 function boDau(s) {
   return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Vai tinh trong vung TNT / XBG do cum Hung Yen phu trach chu khong phai
+// LDTSC. Ma tinh nam trong ngoac o dau ten buu cuc: "(NDI) Nam Truc".
+// Loc theo ma tinh chu khong theo vung: co buu cuc (HNA) bi xep nham sang
+// vung DSH, van phai chan nhu thuong.
+var MA_TINH_CUM_KHAC = ["NDI", "NBI", "HNA", "HDU"];
+
+function thuocCumKhac(b) {
+  if (!b) return false;
+  var ten = ((b.ma || "") + " " + (b.ten || "")).toUpperCase();
+  for (var i = 0; i < MA_TINH_CUM_KHAC.length; i++) {
+    if (ten.indexOf("(" + MA_TINH_CUM_KHAC[i] + ")") >= 0) return true;
+  }
+  return false;
+}
+
+function baoCumKhac(bat) {
+  document.getElementById("chanCumKhac").classList.toggle("hien", !!bat);
 }
 
 // Chuoi de tim cua tung buu cuc: ma + ten + quan + tinh + vung
@@ -253,6 +281,18 @@ function veGoiY(ds) {
 }
 
 function chon(b) {
+  // Van de buu cuc cum khac trong danh sach goi y: giau di thi nguoi gui go
+  // mai khong thay, tuong form hong. Bam vao moi bao ro vi sao khong nhan.
+  if (thuocCumKhac(b)) {
+    daChonBC = null;
+    oDaChon.classList.remove("hien");
+    oGoiY.innerHTML = "";
+    oTim.style.display = "";
+    baoCumKhac(true);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
+    return;
+  }
+  baoCumKhac(false);
   daChonBC = b;
   var noi = [b.quan, b.tinh].filter(Boolean).join(", ");
   if (b.vung) noi += (noi ? " — " : "") + "vùng " + b.vung;
@@ -266,16 +306,21 @@ function chon(b) {
   document.getElementById("loiBuuCuc").classList.remove("hien");
   document.getElementById("doiBC").onclick = function () {
     daChonBC = null;
+    baoCumKhac(false);
     oDaChon.classList.remove("hien");
     oTim.style.display = "";
     oTim.focus();
   };
 }
 
-oTim.addEventListener("input", function () { veGoiY(tim(oTim.value)); });
+oTim.addEventListener("input", function () {
+  baoCumKhac(false);
+  veGoiY(tim(oTim.value));
+});
 
 document.getElementById("vung").addEventListener("change", function () {
   daChonBC = null;
+  baoCumKhac(false);
   oDaChon.classList.remove("hien");
   oGoiY.innerHTML = "";
   oTim.value = "";
@@ -325,6 +370,8 @@ function guiDi() {
   var vung = vungDangChon();
   document.getElementById("loiVung").classList.toggle("hien", !vung);
   document.getElementById("loiBuuCuc").classList.toggle("hien", !daChonBC);
+  var cumKhac = thuocCumKhac(daChonBC);
+  if (cumKhac) baoCumKhac(true);
   var nguoiSai = !/^[0-9]{3,10}$/.test(msnv) ||
                  sdt.replace(/[^0-9]/g, "").length < 9 || !hoTen;
   document.getElementById("loiNguoi").classList.toggle("hien", nguoiSai);
@@ -343,9 +390,10 @@ function guiDi() {
   document.getElementById("loiCamKet").classList.toggle("hien", !daCamKet);
   document.getElementById("khungCamKet").classList.toggle("thieu", !daCamKet);
 
-  if (!vung || !daChonBC || nguoiSai || theTichSai || thieuKhac || !ngay || !gio || !daCamKet) {
+  if (!vung || !daChonBC || cumKhac || nguoiSai || theTichSai || thieuKhac ||
+      !ngay || !gio || !daCamKet) {
     if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
-    if (!daChonBC) { oTim.style.display = ""; oTim.focus(); }
+    if (!daChonBC || cumKhac) { oTim.style.display = ""; oTim.focus(); }
     else if (!daCamKet) {
       document.getElementById("khungCamKet").scrollIntoView({behavior: "smooth", block: "center"});
     }
