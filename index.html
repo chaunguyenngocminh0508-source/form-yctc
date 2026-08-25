@@ -100,20 +100,20 @@
 
 <label for="vung">Vùng <span class="sao">*</span></label>
 <select id="vung"><option value="">-- Chọn vùng --</option>
-<option value="HNO">HNO</option>
 <option value="DBB">DBB</option>
-<option value="BTB">BTB</option>
-<option value="DSH">DSH</option>
-<option value="TNT">TNT</option>
+<option value="HNO">HNO</option>
+<option value="TBB">TBB</option>
+<option value="KHL">KHL</option>
+<option value="KTC">KTC</option>
 <option value="XBG">XBG</option></select>
 <div class="loi" id="loiVung">Chưa chọn vùng</div>
 
 <label for="timBuuCuc">Bưu cục cần tăng cường <span class="sao">*</span></label>
 <input id="timBuuCuc" type="text" autocomplete="off"
-       placeholder="Chọn vùng trước, rồi gõ mã hoặc tên bưu cục">
+       placeholder="Chọn vùng trước, rồi gõ mã hoặc tên bưu cục để bấm chọn">
 <ul class="goiy" id="goiY"></ul>
 <div class="dachon" id="daChon"></div>
-<div class="loi" id="loiBuuCuc">Chưa chọn bưu cục</div>
+<div class="loi" id="loiBuuCuc">Chưa chọn bưu cục — phải bấm chọn từ danh sách gợi ý</div>
 <div class="chan" id="chanCumKhac">⛔ Bưu cục thuộc cụm Hưng Yên, vui lòng điền yêu cầu tăng cường đúng khu vực</div>
 
 <div class="hang">
@@ -132,9 +132,9 @@
 <input id="hoTen" type="text" placeholder="Nguyễn Văn Minh">
 
 <label for="loaiXe">Loại xe <span class="sao">*</span></label>
-<select id="loaiXe"><option value="1T9">1T9</option>
-<option value="2T5">2T5</option>
-<option value="3T5">3T5</option></select>
+<select id="loaiXe"><option value="1,9 Tấn">1,9 Tấn</option>
+<option value="5 Tấn">5 Tấn</option>
+<option value="8 Tấn">8 Tấn</option></select>
 
 <div class="hang">
   <div>
@@ -258,13 +258,14 @@ function veGoiY(ds) {
   oGoiY.innerHTML = "";
   if (!oTim.value.trim()) return;
   if (!ds.length) {
-    var goc = oTim.value.trim();
+    // KHONG cho dung ten tu go: phieu phai gan vao mot buu cuc co that trong
+    // trang Validation, neu khong thi khong xac dinh duoc vung va bao cao
+    // cung khong tinh duoc chuyen do.
     var li = document.createElement("li");
-    li.innerHTML = '<span class="ma">➕ Dùng tên này</span> - ' + goc +
-                   '<span class="noi">Không có trong danh sách, bấm để dùng đúng chữ vừa gõ</span>';
-    li.onclick = function () {
-      chon({ ma: "", ten: goc, quan: "", tinh: "", vung: vungDangChon() });
-    };
+    li.className = "khongthay";
+    li.innerHTML = 'Không có bưu cục nào khớp “' + oTim.value.trim() + '”' +
+                   '<span class="noi">Thử gõ ngắn hơn hoặc gõ mã bưu cục. ' +
+                   'Chỉ chọn được bưu cục có trong danh sách.</span>';
     oGoiY.innerHTML = "";
     oGoiY.appendChild(li);
     return;
@@ -369,7 +370,8 @@ function guiDi() {
 
   var vung = vungDangChon();
   document.getElementById("loiVung").classList.toggle("hien", !vung);
-  document.getElementById("loiBuuCuc").classList.toggle("hien", !daChonBC);
+  var chuaChonBC = !daChonBC || !daChonBC.ma;
+  document.getElementById("loiBuuCuc").classList.toggle("hien", chuaChonBC);
   var cumKhac = thuocCumKhac(daChonBC);
   if (cumKhac) baoCumKhac(true);
   var nguoiSai = !/^[0-9]{3,10}$/.test(msnv) ||
@@ -390,10 +392,10 @@ function guiDi() {
   document.getElementById("loiCamKet").classList.toggle("hien", !daCamKet);
   document.getElementById("khungCamKet").classList.toggle("thieu", !daCamKet);
 
-  if (!vung || !daChonBC || cumKhac || nguoiSai || theTichSai || thieuKhac ||
+  if (!vung || chuaChonBC || cumKhac || nguoiSai || theTichSai || thieuKhac ||
       !ngay || !gio || !daCamKet) {
     if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
-    if (!daChonBC || cumKhac) { oTim.style.display = ""; oTim.focus(); }
+    if (chuaChonBC || cumKhac) { oTim.style.display = ""; oTim.focus(); }
     else if (!daCamKet) {
       document.getElementById("khungCamKet").scrollIntoView({behavior: "smooth", block: "center"});
     }
